@@ -43,6 +43,10 @@ button.value = p1;
 
 function f2(i){
 s += i;
+if (s > 11)
+s = 1;
+else if (s < 1)
+s = 11;
 b = "";
 if (typeof a !== "undefined"){
 if (i > 0)
