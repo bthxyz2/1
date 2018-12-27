@@ -1,0 +1,318 @@
+<script>
+window.onerror = function(m,u,l){
+alert('Error:'+m+'\nURL:'+u+'\nLine:'+l + " s = " + s);return true;};
+</script>
+<img style="width:auto;height:100%">
+<div id="div1">
+</div>
+<input value="">
+</input>
+<input type="button">
+</input>
+<br>
+<input type="button" value="save" id="save">
+<input type="button" value="back" onclick="f3(-1)">
+<input type="button" value="next" onclick="f3(1)">
+<script>
+b = "";
+p = 0;
+p1 = 1;
+s = 11;
+window.onload = function(){f4()};
+
+function f4(){
+document.addEventListener('keydown',f5);
+window.focus();
+window.setInterval(function(){if(document.getElementsByTagName("input")[0].value !== "")
+f3(1)},10000);
+}
+
+function f5(e){
+if(e.keyCode == 37)
+f3(-1);
+else if(e.keyCode == 39)
+f3(1);
+}
+
+function f1(){
+button = document.getElementsByTagName("input")[1];
+b = window.btoa(Tea.decrypt(a[p],document.getElementsByTagName("input")[0].value));
+document.getElementsByTagName("img")[0].src = "data:image/jpg;base64," + b;
+button.value = p1;
+}
+
+function f2(i){
+s += i;
+if (s > 14)
+s = 12;
+else if (s < 12)
+s = 14;
+b = "";
+if (typeof a !== "undefined"){
+if (i > 0)
+p1 = p1 + a.length - p + 1
+else if (i < 0)
+p1 = p1 - p - 1;
+p = 0;
+}
+a = [];
+var s1 = document.createElement("script");s1.type = "text/javascript";
+if (i == -1)
+s1.onload = function(){p=a.length-1;f1()};
+else
+s1.onload = function(){f1()};
+s1.src = "https://raw.githack.com/bthxyz2/1/master/p/" + s + ".js";
+s1.innerHTML = null;
+document.getElementById("div1").innerHTML = "";
+document.getElementById("div1").appendChild(s1);
+}
+
+function f3(i){
+if (typeof a == "undefined"){
+f2(1);
+}
+else{
+p += i;
+p1 += i;
+if (p > a.length - 1){
+p1 -= i;
+f2(1);
+}
+else if (p < 0)
+f2(-1);
+else
+f1(0);
+}
+
+}
+
+</script>
+<script>
+var button = document.getElementById('save');
+button.addEventListener('click', saveTextAsFile);
+
+function saveTextAsFile(i){
+var textToWrite = window.atob(a[p]);
+var length = textToWrite.length;
+var array = new Uint8Array(new ArrayBuffer(length));
+for(i = 0; i < length; i++)
+array[i] = textToWrite.charCodeAt(i);
+
+var textFileAsBlob = new Blob([array],{type:"octet/stream"});
+var fileNameToSaveAs = v + ".mp4";
+var downloadLink = document.createElement("a");
+downloadLink.download = fileNameToSaveAs;
+downloadLink.innerHTML = "Download File";
+if (window.webkitURL != null){
+downloadLink.href = window.webkitURL.createObjectURL(textFileAsBlob);
+}
+else{
+downloadLink.href = window.URL.createObjectURL(textFileAsBlob);
+downloadLink.onclick = destroyClickedElement;
+downloadLink.style.display = "none";
+document.body.appendChild(downloadLink);
+}
+downloadLink.click();
+}
+
+</script>
+<script>
+'use strict';
+
+
+/**
+ * Tiny Encryption Algorithm
+ *
+ * @namespace
+ */
+var Tea = {};
+
+
+/**
+ * Encrypts text using Corrected Block TEA (xxtea) algorithm.
+ *
+ * @param   {string} plaintext - String to be encrypted (multi-byte safe).
+ * @param   {string} password - Password to be used for encryption (1st 16 chars).
+ * @returns {string} Encrypted text (encoded as base64).
+ */
+Tea.encrypt = function(plaintext, password) {
+    plaintext = String(plaintext);
+    password = String(password);
+
+    if (plaintext.length == 0) return('');  // nothing to encrypt
+
+    //  v is n-word data vector; converted to array of longs from UTF-8 string
+    var v = Tea.strToLongs(Tea.utf8Encode(plaintext));
+    //  k is 4-word key; simply convert first 16 chars of password as key
+    var k = Tea.strToLongs(Tea.utf8Encode(password).slice(0,16));
+
+    v = Tea.encode(v, k);
+
+    // convert array of longs to string
+    var ciphertext = Tea.longsToStr(v);
+
+    // convert binary string to base64 ascii for safe transport
+    return Tea.base64Encode(ciphertext);
+};
+
+
+/**
+ * Decrypts text using Corrected Block TEA (xxtea) algorithm.
+ *
+ * @param   {string} ciphertext - String to be decrypted.
+ * @param   {string} password - Password to be used for decryption (1st 16 chars).
+ * @returns {string} Decrypted text.
+ * @throws  {Error}  Invalid ciphertext
+ */
+Tea.decrypt = function(ciphertext, password) {
+    ciphertext = String(ciphertext);
+    password = String(password);
+
+    if (ciphertext.length == 0) return('');
+
+    //  v is n-word data vector; converted to array of longs from base64 string
+    var v = Tea.strToLongs(Tea.base64Decode(ciphertext));
+    //  k is 4-word key; simply convert first 16 chars of password as key
+    var k = Tea.strToLongs(Tea.utf8Encode(password).slice(0,16));
+
+    v = Tea.decode(v, k);
+
+    var plaintext = Tea.longsToStr(v);
+
+    // strip trailing null chars resulting from filling 4-char blocks:
+    plaintext = plaintext.replace(/\0+$/,'');
+
+    return Tea.utf8Decode(plaintext);
+};
+
+
+/**
+ * XXTEA: encodes array of unsigned 32-bit integers using 128-bit key.
+ *
+ * @param   {number[]} v - Data vector.
+ * @param   {number[]} k - Key.
+ * @returns {number[]} Encoded vector.
+ */
+Tea.encode = function(v, k) {
+    if (v.length < 2) v[1] = 0;  // algorithm doesn't work for n<2 so fudge by adding a null
+    var n = v.length;
+
+    var z = v[n-1], y = v[0], delta = 0x9e3779b9;
+    var mx, e, q = Math.floor(6 + 52/n), sum = 0;
+
+    while (q-- > 0) {  // 6 + 52/n operations gives between 6 & 32 mixes on each word
+        sum += delta;
+        e = sum>>>2 & 3;
+        for (var p = 0; p < n; p++) {
+            y = v[(p+1)%n];
+            mx = (z>>>5 ^ y<<2) + (y>>>3 ^ z<<4) ^ (sum^y) + (k[p&3 ^ e] ^ z);
+            z = v[p] += mx;
+        }
+    }
+
+    return v;
+};
+
+
+/**
+ * XXTEA: decodes array of unsigned 32-bit integers using 128-bit key.
+ *
+ * @param   {number[]} v - Data vector.
+ * @param   {number[]} k - Key.
+ * @returns {number[]} Decoded vector.
+ */
+Tea.decode = function(v, k) {
+    var n = v.length;
+
+    var z = v[n-1], y = v[0], delta = 0x9e3779b9;
+    var mx, e, q = Math.floor(6 + 52/n), sum = q*delta;
+
+    while (sum != 0) {
+        e = sum>>>2 & 3;
+        for (var p = n-1; p >= 0; p--) {
+            z = v[p>0 ? p-1 : n-1];
+            mx = (z>>>5 ^ y<<2) + (y>>>3 ^ z<<4) ^ (sum^y) + (k[p&3 ^ e] ^ z);
+            y = v[p] -= mx;
+        }
+        sum -= delta;
+    }
+
+    return v;
+};
+
+
+/**
+ * Converts string to array of longs (each containing 4 chars).
+ * @private
+ */
+Tea.strToLongs = function(s) {
+    // note chars must be within ISO-8859-1 (Unicode code-point <= U+00FF) to fit 4/long
+    var l = new Array(Math.ceil(s.length/4));
+    for (var i=0; i<l.length; i++) {
+        // note little-endian encoding - endianness is irrelevant as long as it matches longsToStr()
+        l[i] = s.charCodeAt(i*4)        + (s.charCodeAt(i*4+1)<<8) +
+              (s.charCodeAt(i*4+2)<<16) + (s.charCodeAt(i*4+3)<<24);
+    } // note running off the end of the string generates nulls since bitwise operators treat NaN as 0
+    return l;
+};
+
+
+/**
+ * Converts array of longs to string.
+ * @private
+ */
+Tea.longsToStr = function(l) {
+    var str = '';
+    for (var i=0; i<l.length; i++) {
+        str += String.fromCharCode(l[i] & 0xff, l[i]>>>8 & 0xff, l[i]>>>16 & 0xff, l[i]>>>24 & 0xff);
+    }
+    return str;
+};
+
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  */
+
+
+Tea.utf8Encode = function(str) {
+    return unescape(encodeURIComponent(str));
+};
+
+/**
+ * Decodes utf8 string to multi-byte
+ */
+Tea.utf8Decode = function(utf8Str) {
+    try {
+        return decodeURIComponent(escape(utf8Str));
+    } catch (e) {
+        return utf8Str; // invalid UTF-8? return as-is
+    }
+};
+
+
+/**
+ * Encodes base64 - developer.mozilla.org/en-US/docs/Web/API/window.btoa, nodejs.org/api/buffer.html
+ */
+Tea.base64Encode = function(str) {
+    if (typeof btoa != 'undefined') return btoa(str); // browser
+    if (typeof Buffer != 'undefined') return new Buffer(str, 'binary').toString('base64'); // Node.js
+    throw new Error('No Base64 Encode');
+};
+
+/**
+ * Decodes base64
+ */
+Tea.base64Decode = function(b64Str) {
+    if (typeof atob == 'undefined' && typeof Buffer == 'undefined') throw new Error('No base64 decode');
+    try {
+        if (typeof atob != 'undefined') return atob(b64Str); // browser
+        if (typeof Buffer != 'undefined') return new Buffer(b64Str, 'base64').toString('binary'); // Node.js
+    } catch (e) {
+        throw new Error('Invalid ciphertext');
+    }
+};
+
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  */
+if (typeof module != 'undefined' && module.exports) module.exports = Tea; // CommonJS export
+
+</script>
